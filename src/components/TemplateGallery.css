@@ -1,0 +1,30 @@
+.template-gallery {
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 5px;
+}
+
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.template-item {
+  cursor: pointer;
+  border: 1px solid #ccc;
+  padding: 10px;
+  text-align: center;
+  background-color: white;
+  transition: box-shadow 0.3s ease;
+}
+
+.template-item:hover {
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.template-item img {
+  max-width: 100%;
+  height: auto;
+  margin-bottom: 10px;
+}

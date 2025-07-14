@@ -6,17 +6,23 @@ const CardEditor = ({ template, onBack }) => {
   const fabricCanvas = useRef(null);
 
   useEffect(() => {
-    const canvas = new fabric.Canvas(canvasRef.current, {
-      width: 500,
-      height: 700,
-      backgroundColor: 'white',
-    });
-    fabricCanvas.current = canvas;
+    if (!fabricCanvas.current) {
+      const canvas = new fabric.Canvas(canvasRef.current);
+      fabricCanvas.current = canvas;
+    }
+    const canvas = fabricCanvas.current;
+    canvas.setWidth(template.width);
+    canvas.setHeight(template.height);
+    const canvas = fabricCanvas.current;
+    canvas.clear();
 
-    canvas.setBackgroundImage(template.background, canvas.renderAll.bind(canvas), {
-      originX: 'left',
-      originY: 'top',
+    fabric.Image.fromURL(template.background, (img) => {
+      canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
+        scaleX: canvas.width / img.width,
+        scaleY: canvas.height / img.height,
+      });
     });
+
 
     template.placeholders.forEach((p) => {
       const placeholder = new fabric.Rect({
@@ -173,47 +179,55 @@ const CardEditor = ({ template, onBack }) => {
   };
 
   return (
-    <div>
-      <h2>Editing {template.name}</h2>
-      <div className="controls">
-        <button onClick={onBack}>Back to Templates</button>
-        <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} ref={fileInputRef} />
-        <button onClick={addText}>Add Text</button>
-        <button onClick={exportAsPNG}>Export as PNG</button>
+    <div className="card-editor-container">
+      <div className="editor-controls">
+        <h2>Editing {template.name}</h2>
+        <div className="controls">
+          <button onClick={onBack}>Back to Templates</button>
+          <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} ref={fileInputRef} />
+          <button onClick={addText}>Add Text</button>
+          <button onClick={exportAsPNG}>Export as PNG</button>
+        </div>
+        {activeObject && activeObject.type === 'textbox' && (
+          <div className="controls">
+            <label>Color:</label>
+            <input type="color" value={activeObject.fill} onChange={(e) => updateTextColor(e.target.value)} />
+            <label>Font Size:</label>
+            <input type="number" value={activeObject.fontSize} onChange={(e) => updateFontSize(e.target.value)} />
+            <label>Font Family:</label>
+            <select value={activeObject.fontFamily} onChange={(e) => updateFontFamily(e.target.value)}>
+              <option>Arial</option>
+              <option>Courier</option>
+              <option>Georgia</option>
+              <option>Times New Roman</option>
+              <option>Verdana</option>
+              <option>Dancing Script</option>
+              <option>Great Vibes</option>
+              <option>Lobster</option>
+              <option>Pacifico</option>
+            </select>
+          </div>
+        )}
+        {activeObject && activeObject.type === 'image' && (
+          <div className="controls">
+            <label>Zoom:</label>
+            <input
+              type="range"
+              min="0.1"
+              max="3"
+              step="0.1"
+              value={activeObject.scaleX}
+              onChange={(e) => {
+                activeObject.scale(parseFloat(e.target.value)).setCoords();
+                fabricCanvas.current.renderAll();
+              }}
+            />
+          </div>
+        )}
       </div>
-      {activeObject && activeObject.type === 'textbox' && (
-        <div className="controls">
-          <label>Color:</label>
-          <input type="color" value={activeObject.fill} onChange={(e) => updateTextColor(e.target.value)} />
-          <label>Font Size:</label>
-          <input type="number" value={activeObject.fontSize} onChange={(e) => updateFontSize(e.target.value)} />
-          <label>Font Family:</label>
-          <select value={activeObject.fontFamily} onChange={(e) => updateFontFamily(e.target.value)}>
-            <option>Arial</option>
-            <option>Courier</option>
-            <option>Georgia</option>
-            <option>Times New Roman</option>
-            <option>Verdana</option>
-          </select>
-        </div>
-      )}
-      {activeObject && activeObject.type === 'image' && (
-        <div className="controls">
-          <label>Zoom:</label>
-          <input
-            type="range"
-            min="0.1"
-            max="3"
-            step="0.1"
-            value={activeObject.scaleX}
-            onChange={(e) => {
-              activeObject.scale(parseFloat(e.target.value)).setCoords();
-              fabricCanvas.current.renderAll();
-            }}
-          />
-        </div>
-      )}
-      <canvas ref={canvasRef} style={{ border: '1px solid #ccc' }} />
+      <div className="canvas-container">
+        <canvas ref={canvasRef} />
+      </div>
     </div>
   );
 };

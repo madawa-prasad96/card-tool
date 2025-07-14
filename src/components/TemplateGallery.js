@@ -13,7 +13,7 @@ const TemplateGallery = ({ onSelectTemplate }) => {
             className="template-item"
             onClick={() => onSelectTemplate(template)}
           >
-            <img src={template.thumbnail} alt={template.name} />
+            <img src={template.background} alt={template.name} />
             <p>{template.name}</p>
           </div>
         ))}

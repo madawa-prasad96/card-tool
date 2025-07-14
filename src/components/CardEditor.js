@@ -13,13 +13,49 @@ const CardEditor = ({ template, onBack }) => {
     });
     fabricCanvas.current = canvas;
 
-    // Add template name
-    const text = new fabric.Textbox(template.name, {
+    canvas.setBackgroundImage(template.background, canvas.renderAll.bind(canvas), {
+      originX: 'left',
+      originY: 'top',
+    });
+
+    template.placeholders.forEach((p) => {
+      const placeholder = new fabric.Rect({
+        left: p.x,
+        top: p.y,
+        width: p.width,
+        height: p.height,
+        fill: '#eee',
+        stroke: '#ccc',
+        strokeDashArray: [5, 5],
+        selectable: false,
+        data: { id: p.id },
+      });
+
+      const placeholderText = new fabric.Text('Upload Image', {
+        left: p.x + p.width / 2,
+        top: p.y + p.height / 2,
+        originX: 'center',
+        originY: 'center',
+        fontSize: 20,
+        fill: '#aaa',
+        selectable: false,
+      });
+
+      const group = new fabric.Group([placeholder, placeholderText], {
+        selectable: false,
+        data: { id: p.id },
+      });
+
+      canvas.add(group);
+    });
+
+    const text = new fabric.Textbox('Thank You!', {
       left: 50,
-      top: 50,
+      top: 550,
       width: 400,
       fontSize: 40,
       textAlign: 'center',
+      fontFamily: 'Georgia',
     });
     canvas.add(text);
 
@@ -37,9 +73,31 @@ const CardEditor = ({ template, onBack }) => {
     const reader = new FileReader();
     reader.onload = (f) => {
       fabric.Image.fromURL(f.target.result, (img) => {
-        img.scaleToWidth(400);
-        fabricCanvas.current.add(img);
-        fabricCanvas.current.renderAll();
+        const placeholder = fabricCanvas.current.getObjects().find(
+          (obj) => obj.data && obj.data.id === selectedPlaceholder
+        );
+
+        if (placeholder) {
+          const placeholderRect = placeholder.getObjects('rect')[0];
+          const clipPath = new fabric.Rect({
+            left: 0,
+            top: 0,
+            width: placeholderRect.width,
+            height: placeholderRect.height,
+            absolutePositioned: true,
+          });
+
+          img.set({
+            left: placeholder.left + placeholderRect.left,
+            top: placeholder.top + placeholderRect.top,
+            clipPath: clipPath,
+          });
+          img.scaleToWidth(placeholderRect.width);
+          img.setCoords();
+          fabricCanvas.current.add(img);
+          fabricCanvas.current.remove(placeholder);
+          fabricCanvas.current.renderAll();
+        }
       });
     };
     reader.readAsDataURL(file);
@@ -47,8 +105,18 @@ const CardEditor = ({ template, onBack }) => {
 
   const [activeObject, setActiveObject] = useState(null);
 
+  const fileInputRef = useRef(null);
+  const [selectedPlaceholder, setSelectedPlaceholder] = useState(null);
+
   useEffect(() => {
     if (fabricCanvas.current) {
+      fabricCanvas.current.on('mouse:down', (e) => {
+        if (e.target && e.target.data && e.target.data.id) {
+          setSelectedPlaceholder(e.target.data.id);
+          fileInputRef.current.click();
+        }
+      });
+
       fabricCanvas.current.on('selection:created', (e) => {
         setActiveObject(e.target);
       });
@@ -109,7 +177,7 @@ const CardEditor = ({ template, onBack }) => {
       <h2>Editing {template.name}</h2>
       <div className="controls">
         <button onClick={onBack}>Back to Templates</button>
-        <input type="file" accept="image/*" onChange={handleImageUpload} />
+        <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} ref={fileInputRef} />
         <button onClick={addText}>Add Text</button>
         <button onClick={exportAsPNG}>Export as PNG</button>
       </div>
@@ -127,6 +195,22 @@ const CardEditor = ({ template, onBack }) => {
             <option>Times New Roman</option>
             <option>Verdana</option>
           </select>
+        </div>
+      )}
+      {activeObject && activeObject.type === 'image' && (
+        <div className="controls">
+          <label>Zoom:</label>
+          <input
+            type="range"
+            min="0.1"
+            max="3"
+            step="0.1"
+            value={activeObject.scaleX}
+            onChange={(e) => {
+              activeObject.scale(parseFloat(e.target.value)).setCoords();
+              fabricCanvas.current.renderAll();
+            }}
+          />
         </div>
       )}
       <canvas ref={canvasRef} style={{ border: '1px solid #ccc' }} />

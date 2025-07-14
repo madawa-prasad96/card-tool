@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { fabric } from 'fabric';
+import WebFont from 'webfontloader';
 
 const CardEditor = ({ template, onBack }) => {
   const canvasRef = useRef(null);
@@ -13,7 +14,6 @@ const CardEditor = ({ template, onBack }) => {
     const canvas = fabricCanvas.current;
     canvas.setWidth(template.width);
     canvas.setHeight(template.height);
-    const canvas = fabricCanvas.current;
     canvas.clear();
 
     fabric.Image.fromURL(template.background, (img) => {
@@ -22,7 +22,6 @@ const CardEditor = ({ template, onBack }) => {
         scaleY: canvas.height / img.height,
       });
     });
-
 
     template.placeholders.forEach((p) => {
       const placeholder = new fabric.Rect({
@@ -64,13 +63,27 @@ const CardEditor = ({ template, onBack }) => {
       fontFamily: 'Georgia',
     });
     canvas.add(text);
-
-
-    // Clean up on unmount
-    return () => {
-      canvas.dispose();
-    };
   }, [template]);
+
+  useEffect(() => {
+    WebFont.load({
+      google: {
+        families: ['Dancing Script', 'Great Vibes', 'Lobster', 'Pacifico']
+      },
+      active: () => {
+        if (fabricCanvas.current) {
+          fabricCanvas.current.renderAll();
+        }
+      }
+    });
+
+    return () => {
+      if (fabricCanvas.current) {
+        fabricCanvas.current.dispose();
+        fabricCanvas.current = null;
+      }
+    };
+  }, []);
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -86,8 +99,8 @@ const CardEditor = ({ template, onBack }) => {
         if (placeholder) {
           const placeholderRect = placeholder.getObjects('rect')[0];
           const clipPath = new fabric.Rect({
-            left: 0,
-            top: 0,
+            left: placeholder.left + placeholderRect.left,
+            top: placeholder.top + placeholderRect.top,
             width: placeholderRect.width,
             height: placeholderRect.height,
             absolutePositioned: true,
@@ -97,11 +110,13 @@ const CardEditor = ({ template, onBack }) => {
             left: placeholder.left + placeholderRect.left,
             top: placeholder.top + placeholderRect.top,
             clipPath: clipPath,
+            selectable: true,
           });
           img.scaleToWidth(placeholderRect.width);
           img.setCoords();
           fabricCanvas.current.add(img);
           fabricCanvas.current.remove(placeholder);
+          fabricCanvas.current.setActiveObject(img);
           fabricCanvas.current.renderAll();
         }
       });
@@ -141,9 +156,11 @@ const CardEditor = ({ template, onBack }) => {
       top: 100,
       width: 200,
       fontSize: 20,
+      editable: true,
     });
     fabricCanvas.current.add(text);
     fabricCanvas.current.setActiveObject(text);
+    fabricCanvas.current.renderAll();
   };
 
   const updateTextColor = (color) => {

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { fabric } from 'fabric';
 
 const CardEditor = ({ template, onBack }) => {
@@ -84,22 +84,14 @@ const CardEditor = ({ template, onBack }) => {
         );
 
         if (placeholder) {
-          const clipPath = new fabric.Rect({
-            left: placeholder.left,
-            top: placeholder.top,
-            width: placeholder.width,
-            height: placeholder.height,
-            absolutePositioned: true,
-          });
-
+          img.scaleToWidth(placeholder.width);
           img.set({
             left: placeholder.left,
             top: placeholder.top,
-            clipPath: clipPath,
-            selectable: true,
+            clipTo: function (ctx) {
+              ctx.rect(placeholder.left, placeholder.top, placeholder.width, placeholder.height);
+            }
           });
-          img.scaleToWidth(placeholder.width);
-          img.setCoords();
           fabricCanvas.current.add(img);
           fabricCanvas.current.remove(placeholder);
           fabricCanvas.current.setActiveObject(img);

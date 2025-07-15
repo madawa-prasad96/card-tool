@@ -1,6 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { fabric } from 'fabric';
-import WebFont from 'webfontloader';
 
 const CardEditor = ({ template, onBack }) => {
   const canvasRef = useRef(null);
@@ -35,23 +34,7 @@ const CardEditor = ({ template, onBack }) => {
         selectable: false,
         data: { id: p.id },
       });
-
-      const placeholderText = new fabric.Text('Upload Image', {
-        left: p.x + p.width / 2,
-        top: p.y + p.height / 2,
-        originX: 'center',
-        originY: 'center',
-        fontSize: 20,
-        fill: '#aaa',
-        selectable: false,
-      });
-
-      const group = new fabric.Group([placeholder, placeholderText], {
-        selectable: false,
-        data: { id: p.id },
-      });
-
-      canvas.add(group);
+      canvas.add(placeholder);
     });
 
     const text = new fabric.Textbox('Thank You!', {
@@ -66,17 +49,6 @@ const CardEditor = ({ template, onBack }) => {
   }, [template]);
 
   useEffect(() => {
-    WebFont.load({
-      google: {
-        families: ['Dancing Script', 'Great Vibes', 'Lobster', 'Pacifico']
-      },
-      active: () => {
-        if (fabricCanvas.current) {
-          fabricCanvas.current.renderAll();
-        }
-      }
-    });
-
     return () => {
       if (fabricCanvas.current) {
         fabricCanvas.current.dispose();
@@ -84,6 +56,21 @@ const CardEditor = ({ template, onBack }) => {
       }
     };
   }, []);
+
+  const fileInputRef = useRef(null);
+
+  const [selectedPlaceholder, setSelectedPlaceholder] = useState(null);
+
+  useEffect(() => {
+    if (fabricCanvas.current) {
+      fabricCanvas.current.on('mouse:down', (e) => {
+        if (e.target && e.target.data && e.target.data.id) {
+          setSelectedPlaceholder(e.target.data.id);
+          fileInputRef.current.click();
+        }
+      });
+    }
+  }, [fabricCanvas.current]);
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -97,27 +84,28 @@ const CardEditor = ({ template, onBack }) => {
         );
 
         if (placeholder) {
-          const placeholderRect = placeholder.getObjects('rect')[0];
           const clipPath = new fabric.Rect({
-            left: placeholder.left + placeholderRect.left,
-            top: placeholder.top + placeholderRect.top,
-            width: placeholderRect.width,
-            height: placeholderRect.height,
+            left: placeholder.left,
+            top: placeholder.top,
+            width: placeholder.width,
+            height: placeholder.height,
             absolutePositioned: true,
           });
 
           img.set({
-            left: placeholder.left + placeholderRect.left,
-            top: placeholder.top + placeholderRect.top,
+            left: placeholder.left,
+            top: placeholder.top,
             clipPath: clipPath,
             selectable: true,
           });
-          img.scaleToWidth(placeholderRect.width);
+          img.scaleToWidth(placeholder.width);
           img.setCoords();
           fabricCanvas.current.add(img);
           fabricCanvas.current.remove(placeholder);
           fabricCanvas.current.setActiveObject(img);
           fabricCanvas.current.renderAll();
+        } else {
+          fabricCanvas.current.add(img);
         }
       });
     };
@@ -126,18 +114,8 @@ const CardEditor = ({ template, onBack }) => {
 
   const [activeObject, setActiveObject] = useState(null);
 
-  const fileInputRef = useRef(null);
-  const [selectedPlaceholder, setSelectedPlaceholder] = useState(null);
-
   useEffect(() => {
     if (fabricCanvas.current) {
-      fabricCanvas.current.on('mouse:down', (e) => {
-        if (e.target && e.target.data && e.target.data.id) {
-          setSelectedPlaceholder(e.target.data.id);
-          fileInputRef.current.click();
-        }
-      });
-
       fabricCanvas.current.on('selection:created', (e) => {
         setActiveObject(e.target);
       });
@@ -184,17 +162,6 @@ const CardEditor = ({ template, onBack }) => {
     }
   };
 
-  const exportAsPNG = () => {
-    const dataURL = fabricCanvas.current.toDataURL({
-      format: 'png',
-      quality: 1,
-    });
-    const link = document.createElement('a');
-    link.href = dataURL;
-    link.download = `${template.name}-card.png`;
-    link.click();
-  };
-
   return (
     <div className="card-editor-container">
       <div className="editor-controls">
@@ -202,9 +169,25 @@ const CardEditor = ({ template, onBack }) => {
         <div className="controls">
           <button onClick={onBack}>Back to Templates</button>
           <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} ref={fileInputRef} />
+          <button onClick={() => fileInputRef.current.click()}>Add Image</button>
           <button onClick={addText}>Add Text</button>
-          <button onClick={exportAsPNG}>Export as PNG</button>
         </div>
+        {activeObject && activeObject.type === 'image' && (
+          <div className="controls">
+            <label>Zoom:</label>
+            <input
+              type="range"
+              min="0.1"
+              max="3"
+              step="0.1"
+              value={activeObject.scaleX}
+              onChange={(e) => {
+                activeObject.scale(parseFloat(e.target.value)).setCoords();
+                fabricCanvas.current.renderAll();
+              }}
+            />
+          </div>
+        )}
         {activeObject && activeObject.type === 'textbox' && (
           <div className="controls">
             <label>Color:</label>
@@ -223,22 +206,6 @@ const CardEditor = ({ template, onBack }) => {
               <option>Lobster</option>
               <option>Pacifico</option>
             </select>
-          </div>
-        )}
-        {activeObject && activeObject.type === 'image' && (
-          <div className="controls">
-            <label>Zoom:</label>
-            <input
-              type="range"
-              min="0.1"
-              max="3"
-              step="0.1"
-              value={activeObject.scaleX}
-              onChange={(e) => {
-                activeObject.scale(parseFloat(e.target.value)).setCoords();
-                fabricCanvas.current.renderAll();
-              }}
-            />
           </div>
         )}
       </div>
